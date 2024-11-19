@@ -60,7 +60,7 @@ app.get('/users/tourGuide/:email',async (req,res)=>{
   const user = await userCollection.findOne(query)
   let tourGuide = false;
   if(user){
-    admin = user?.role === 'tourGuide'
+    tourGuide = user?.role === 'tourGuide'
   }
   res.send({tourGuide})
  })
