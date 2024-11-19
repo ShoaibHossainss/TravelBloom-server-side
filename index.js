@@ -38,6 +38,7 @@ run().catch(console.dir);
 const touristSpotCollection = client.db("touristSpotDB").collection("touristSpot");
 const userCollection = client.db("touristSpotDB").collection("users");
 const tourGuidesCollection = client.db("touristSpotDB").collection("tourGuide");
+const touristStoryCollection = client.db("touristSpotDB").collection("touristStory");
 
 app.get('/users',async (req, res) => {
     const result = await userCollection.find().toArray();
@@ -106,6 +107,17 @@ app.get('/tourGuides/:id', async (req, res) => {
   const id = req.params.id;
   const query = { _id: new ObjectId(id) }
   const result = await tourGuidesCollection.findOne(query);
+  res.send(result);
+})
+app.get('/touristStory',async(req,res)=>{
+  const cursor = touristStoryCollection.find()
+  const result = await cursor.toArray()
+  res.send(result)
+})
+app.get('/touristStory/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: new ObjectId(id) }
+  const result = await touristStoryCollection.findOne(query);
   res.send(result);
 })
 
