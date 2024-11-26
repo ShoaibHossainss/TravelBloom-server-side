@@ -96,6 +96,11 @@ app.post('/touristSpot',async(req,res)=>{
   const result = await touristSpotCollection.insertOne(item);
   res.send(result);
 })
+app.post('/tourGuides',async(req,res)=>{
+  const item = req.body;
+  const result = await tourGuidesCollection.insertOne(item);
+  res.send(result);
+})
 
 
 app.get('/tourGuides',async(req,res)=>{
