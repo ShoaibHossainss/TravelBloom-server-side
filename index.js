@@ -39,6 +39,7 @@ const touristSpotCollection = client.db("touristSpotDB").collection("touristSpot
 const userCollection = client.db("touristSpotDB").collection("users");
 const tourGuidesCollection = client.db("touristSpotDB").collection("tourGuide");
 const touristStoryCollection = client.db("touristSpotDB").collection("touristStory");
+const touristFormCollection = client.db("touristSpotDB").collection("touristForm");
 
 app.get('/users',async (req, res) => {
     const result = await userCollection.find().toArray();
@@ -85,15 +86,34 @@ app.get('/touristSpot',async(req,res)=>{
   const result = await cursor.toArray()
   res.send(result)
 })
+app.get('/touristForm',async(req,res)=>{
+  const {email,guide_email} = req.query;
+  const query = {};
+  if (email) query.email = email;
+  if (guide_email) query.guide_email = guide_email;
+  const result = await touristFormCollection.find(query).toArray()
+  res.send(result)
+})
+
 app.get('/touristSpot/:id', async (req, res) => {
   const id = req.params.id;
   const query = { _id: new ObjectId(id) }
   const result = await touristSpotCollection.findOne(query);
   res.send(result);
 })
+app.post('/touristForm',async(req,res)=>{
+  const item = req.body;
+  const result = await touristFormCollection.insertOne(item);
+  res.send(result);
+})
 app.post('/touristSpot',async(req,res)=>{
   const item = req.body;
   const result = await touristSpotCollection.insertOne(item);
+  res.send(result);
+})
+app.post('/touristStory',async(req,res)=>{
+  const item = req.body;
+  const result = await touristStoryCollection.insertOne(item);
   res.send(result);
 })
 app.post('/tourGuides',async(req,res)=>{
@@ -141,13 +161,71 @@ app.patch('/users/admin/:id',async(req,res)=>{
 app.patch('/users/tourGuide/:id',async(req,res)=>{
   const id = req.params.id;
     const filter = { _id: new ObjectId(id) };
+    const user = await userCollection.findOne(filter);
+    const existingTourGuide = await tourGuidesCollection.findOne({ email: user?.email });
+
+    if (existingTourGuide) {
+      return res.status(400).send({ success: false, message: "User is already a tour guide" });
+    }
     const updatedDoc = {
       $set: {
         role: 'tourGuide'
       }
     }
     const result = await userCollection.updateOne(filter, updatedDoc);
+    if (result.modifiedCount > 0) {
+      // Add to tourGuide collection
+      const tourGuideData = {
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profilePicture || null, // If the user has an image
+        phone: user.phone || null,
+        education: user.education || null,
+        address: user.address || null,
+        skills: user.skills || null,
+        position: user.position || null,
+        company: user.company || null,
+        years: user.years || null,
+        
+      };
+
+      const tourGuideResult = await tourGuidesCollection.insertOne(tourGuideData);
+      if (tourGuideResult.insertedId) {
+        return res.send({
+          success: true,
+          message: "User promoted to tourGuide and added to tourGuidesCollection.",
+        });
+      } 
+    }
+}
+)
+app.patch('/users/request-guide', async (req, res) =>{
+  const { email } = req.body;
+  const result = await userCollection.updateOne(
+      { email },
+      { $set: { role: 'requested' } }
+  );
+  res.send(result);
+})
+app.patch('/touristForm/:id',async(req,res)=>{
+  const id = req.params.id;
+  const {status} = req.body;
+    const filter = { _id: new ObjectId(id) };
+    const updatedDoc = {
+      $set: {
+        status,
+      }
+    }
+    const result = await touristFormCollection.updateOne(filter, updatedDoc);
     res.send(result);
+})
+
+app.delete('/touristForm/:id',async(req,res)=>{
+  const id = req.params.id
+  console.log('delete',id)
+  const query = { _id: new ObjectId(id) };
+  const result = await touristFormCollection.deleteOne(query);
+  res.send(result)
 })
 
 
