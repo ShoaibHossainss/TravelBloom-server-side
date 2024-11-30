@@ -40,10 +40,20 @@ const userCollection = client.db("touristSpotDB").collection("users");
 const tourGuidesCollection = client.db("touristSpotDB").collection("tourGuide");
 const touristStoryCollection = client.db("touristSpotDB").collection("touristStory");
 const touristFormCollection = client.db("touristSpotDB").collection("touristForm");
+const wishlistCollection = client.db("touristSpotDB").collection("wishlist");
 
 app.get('/users',async (req, res) => {
     const result = await userCollection.find().toArray();
     res.send(result);
+});
+app.get('/users/:email', async (req, res) => {
+  const email = req.params.email;
+  const user = await userCollection.findOne({ email });
+  if (user) {
+      res.send(user);
+  } else {
+      res.status(404).send({ message: 'User not found' });
+  }
 });
 
 app.get('/users/admin/:email',async (req,res)=>{
@@ -86,6 +96,13 @@ app.get('/touristSpot',async(req,res)=>{
   const result = await cursor.toArray()
   res.send(result)
 })
+app.get('/wishlist',async(req,res)=>{
+  const email = req.query.email;
+  const query = { email: email };
+  const cursor = wishlistCollection.find(query)
+  const result = await cursor.toArray()
+  res.send(result)
+})
 app.get('/touristForm',async(req,res)=>{
   const {email,guide_email} = req.query;
   const query = {};
@@ -119,6 +136,11 @@ app.post('/touristStory',async(req,res)=>{
 app.post('/tourGuides',async(req,res)=>{
   const item = req.body;
   const result = await tourGuidesCollection.insertOne(item);
+  res.send(result);
+})
+app.post('/wishlist',async(req,res)=>{
+  const item = req.body;
+  const result = await wishlistCollection.insertOne(item);
   res.send(result);
 })
 
@@ -222,9 +244,15 @@ app.patch('/touristForm/:id',async(req,res)=>{
 
 app.delete('/touristForm/:id',async(req,res)=>{
   const id = req.params.id
-  console.log('delete',id)
   const query = { _id: new ObjectId(id) };
   const result = await touristFormCollection.deleteOne(query);
+  res.send(result)
+})
+app.delete('/wishlist/:id',async(req,res)=>{
+  const id = req.params.id
+  console.log('delete',id)
+  const query = { _id: new ObjectId(id) };
+  const result = await wishlistCollection.deleteOne(query);
   res.send(result)
 })
 
