@@ -7,6 +7,17 @@ const port = process.env.port || 5000
 app.use(express.json())
 app.use(cors())
 
+app.use(cors(
+  {
+      origin: ['http://localhost:5173',
+        'https://assignmnet-12-b8c69.web.app',
+        'https://assignmnet-12-b8c69.firebaseapp.com'
+      ],
+      
+      credentials: true
+  }
+));
+
 
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -24,9 +35,9 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
@@ -92,15 +103,13 @@ app.post('/users',async(req,res)=>{
 })
 
 app.get('/touristSpot',async(req,res)=>{
-  const cursor = touristSpotCollection.find()
-  const result = await cursor.toArray()
+  const result = await touristSpotCollection.find().toArray()
   res.send(result)
 })
 app.get('/wishlist',async(req,res)=>{
   const email = req.query.email;
   const query = { email: email };
-  const cursor = wishlistCollection.find(query)
-  const result = await cursor.toArray()
+  const result = await wishlistCollection.find(query).toArray()
   res.send(result)
 })
 app.get('/touristForm',async(req,res)=>{
@@ -146,8 +155,7 @@ app.post('/wishlist',async(req,res)=>{
 
 
 app.get('/tourGuides',async(req,res)=>{
-  const cursor = tourGuidesCollection.find()
-  const result = await cursor.toArray()
+  const result = await tourGuidesCollection.find().toArray()
   res.send(result)
 })
 app.get('/tourGuides/:id', async (req, res) => {
@@ -157,8 +165,7 @@ app.get('/tourGuides/:id', async (req, res) => {
   res.send(result);
 })
 app.get('/touristStory',async(req,res)=>{
-  const cursor = touristStoryCollection.find()
-  const result = await cursor.toArray()
+  const result = await touristStoryCollection.find().toArray()
   res.send(result)
 })
 app.get('/touristStory/:id', async (req, res) => {
@@ -196,11 +203,10 @@ app.patch('/users/tourGuide/:id',async(req,res)=>{
     }
     const result = await userCollection.updateOne(filter, updatedDoc);
     if (result.modifiedCount > 0) {
-      // Add to tourGuide collection
       const tourGuideData = {
         name: user.name,
         email: user.email,
-        profilePicture: user.profilePicture || null, // If the user has an image
+        profilePicture: user.profilePicture || null, 
         phone: user.phone || null,
         education: user.education || null,
         address: user.address || null,
@@ -250,9 +256,14 @@ app.delete('/touristForm/:id',async(req,res)=>{
 })
 app.delete('/wishlist/:id',async(req,res)=>{
   const id = req.params.id
-  console.log('delete',id)
   const query = { _id: new ObjectId(id) };
   const result = await wishlistCollection.deleteOne(query);
+  res.send(result)
+})
+app.delete('/users/:id',async(req,res)=>{
+  const id = req.params.id
+  const query = { _id: new ObjectId(id) };
+  const result = await userCollection.deleteOne(query);
   res.send(result)
 })
 
