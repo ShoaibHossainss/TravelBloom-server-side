@@ -1,19 +1,17 @@
 const express = require('express')
 const app = express()
 const cors = require('cors')
+const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const port = process.env.port || 5000
 
 app.use(express.json())
-app.use(cors())
-
 app.use(cors(
   {
       origin: ['http://localhost:5173',
         'https://assignmnet-12-b8c69.web.app',
         'https://assignmnet-12-b8c69.firebaseapp.com'
       ],
-      
       credentials: true
   }
 ));
@@ -53,7 +51,51 @@ const touristStoryCollection = client.db("touristSpotDB").collection("touristSto
 const touristFormCollection = client.db("touristSpotDB").collection("touristForm");
 const wishlistCollection = client.db("touristSpotDB").collection("wishlist");
 
-app.get('/users',async (req, res) => {
+app.post('/jwt', async(req,res)=>{
+  const user = req.body;
+  const token = jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{
+    expiresIn: '1h'
+  })
+  res.send({token})
+ })
+
+const verifyToken = (req,res,next) => { 
+   if(!req.headers.authorization){
+    return res.status(401).send({message: 'forbidden access'})
+   }
+   const token = req.headers.authorization.split(' ')[1] 
+   jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err,decoded)=>{
+    if(err){
+      return res.status(401).send({message: 'unauthorized access'})
+    }
+    req.decoded = decoded;
+    next()
+   })
+}
+const verifyAdmin = async (req,res,next)=>{
+  const email = req.decoded.email;
+  const query = {email: email};
+  const user = await userCollection.findOne(query)
+  const isAdmin = user?.role === 'admin'
+  if(!isAdmin){
+    res.status(403).send({message: 'forbidden access'})
+  }
+  next()
+}
+const verifyTourGuide = async (req,res,next)=>{
+  const email = req.decoded.email;
+  const query = {email: email};
+  const user = await userCollection.findOne(query)
+  const isTourGuide = user?.role === 'tourGuide'
+  if(!isTourGuide){
+    res.status(403).send({message: 'forbidden access'})
+  }
+  next()
+}
+
+
+
+app.get('/users',verifyToken,verifyAdmin,async (req, res) => {
     const result = await userCollection.find().toArray();
     res.send(result);
 });
@@ -67,7 +109,7 @@ app.get('/users/:email', async (req, res) => {
   }
 });
 
-app.get('/users/admin/:email',async (req,res)=>{
+app.get('/users/admin/:email',verifyToken,verifyAdmin,async (req,res)=>{
   const email = req.params.email;
   const query = {email: email}
   const user = await userCollection.findOne(query)
@@ -78,7 +120,7 @@ app.get('/users/admin/:email',async (req,res)=>{
   res.send({admin})
  })
 
-app.get('/users/tourGuide/:email',async (req,res)=>{
+app.get('/users/tourGuide/:email',verifyToken,verifyTourGuide,async (req,res)=>{
   const email = req.params.email;
   const query = {email: email}
   const user = await userCollection.findOne(query)
@@ -114,6 +156,7 @@ app.get('/wishlist',async(req,res)=>{
 })
 app.get('/touristForm',async(req,res)=>{
   const {email,guide_email} = req.query;
+  console.log(req.headers)
   const query = {};
   if (email) query.email = email;
   if (guide_email) query.guide_email = guide_email;
@@ -132,17 +175,17 @@ app.post('/touristForm',async(req,res)=>{
   const result = await touristFormCollection.insertOne(item);
   res.send(result);
 })
-app.post('/touristSpot',async(req,res)=>{
+app.post('/touristSpot',verifyToken,verifyAdmin,async(req,res)=>{
   const item = req.body;
   const result = await touristSpotCollection.insertOne(item);
   res.send(result);
 })
-app.post('/touristStory',async(req,res)=>{
+app.post('/touristStory', async(req,res)=>{
   const item = req.body;
   const result = await touristStoryCollection.insertOne(item);
   res.send(result);
 })
-app.post('/tourGuides',async(req,res)=>{
+app.post('/tourGuides',verifyToken,verifyTourGuide,async(req,res)=>{
   const item = req.body;
   const result = await tourGuidesCollection.insertOne(item);
   res.send(result);
@@ -176,7 +219,7 @@ app.get('/touristStory/:id', async (req, res) => {
 })
 
 
-app.patch('/users/admin/:id',async(req,res)=>{
+app.patch('/users/admin/:id',verifyToken,verifyAdmin,async(req,res)=>{
   const id = req.params.id;
     const filter = { _id: new ObjectId(id) };
     const updatedDoc = {
@@ -227,6 +270,7 @@ app.patch('/users/tourGuide/:id',async(req,res)=>{
     }
 }
 )
+
 app.patch('/users/request-guide', async (req, res) =>{
   const { email } = req.body;
   const result = await userCollection.updateOne(
@@ -235,6 +279,7 @@ app.patch('/users/request-guide', async (req, res) =>{
   );
   res.send(result);
 })
+
 app.patch('/touristForm/:id',async(req,res)=>{
   const id = req.params.id;
   const {status} = req.body;
@@ -260,7 +305,7 @@ app.delete('/wishlist/:id',async(req,res)=>{
   const result = await wishlistCollection.deleteOne(query);
   res.send(result)
 })
-app.delete('/users/:id',async(req,res)=>{
+app.delete('/users/:id',verifyToken,verifyAdmin,async(req,res)=>{
   const id = req.params.id
   const query = { _id: new ObjectId(id) };
   const result = await userCollection.deleteOne(query);
