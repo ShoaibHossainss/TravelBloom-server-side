@@ -5,12 +5,15 @@ const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const port = process.env.port || 5000
 
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
 app.use(express.json())
 app.use(cors(
   {
       origin: ['http://localhost:5173',
         'https://assignmnet-12-b8c69.web.app',
-        'https://assignmnet-12-b8c69.firebaseapp.com'
+        'https://assignmnet-12-b8c69.firebaseapp.com',
+        'https://travelbloombd.netlify.app'
       ],
       credentials: true
   }
@@ -51,19 +54,38 @@ const touristStoryCollection = client.db("touristSpotDB").collection("touristSto
 const touristFormCollection = client.db("touristSpotDB").collection("touristForm");
 const wishlistCollection = client.db("touristSpotDB").collection("wishlist");
 
+
+
+
 app.post('/jwt', async(req,res)=>{
   const user = req.body;
   const token = jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{
-    expiresIn: '1h'
+    expiresIn: '1h',
+   
   })
   res.send({token})
  })
 
 
+ const verifyToken = (req, res, next) => {
+  const token = req.cookies.accessToken; 
+  console.log(token)
+  if (!token) {
+      return res.status(401).send({ message: 'Unauthorized access' });
+  }
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+      if (err) {
+          return res.status(401).send({ message: 'Unauthorized access' });
+      }
+      req.decoded = decoded;
+      next();
+  });
+};
 
 
-
-app.get('/users',async (req, res) => {
+app.get('/users',verifyToken,async (req, res) => {
+  console.log(req.headers.Authorization)
     const result = await userCollection.find().toArray();
     res.send(result);
 });
@@ -77,7 +99,7 @@ app.get('/users/:email', async (req, res) => {
   }
 });
 
-app.get('/users/admin/:email',async (req,res)=>{
+app.get('/users/admin/:email',verifyToken,async (req,res)=>{
   const email = req.params.email;
   const query = {email: email}
   const user = await userCollection.findOne(query)
